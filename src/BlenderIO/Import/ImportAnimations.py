@@ -235,7 +235,7 @@ def prop_anim_from_gfs_anim(ap_props, gap_name, anim_type, anim_name, gfs_anim, 
     ####################
     # SET UP VARIABLES #
     ####################
-    if   anim_type == BASE_ANIM_TYPE: prop_collection = ap_props.test_anims
+    if   anim_type == BASE_ANIM_TYPE:   prop_collection = ap_props.test_anims
     elif anim_type == BLEND_ANIM_TYPE:  prop_collection = ap_props.test_blend_anims
     elif anim_type == LOOKAT_ANIM_TYPE: prop_collection = ap_props.test_lookat_anims
     else:
@@ -303,6 +303,11 @@ def prop_anim_from_gfs_anim(ap_props, gap_name, anim_type, anim_name, gfs_anim, 
             scale_action.user_clear()
             bpy.data.actions.remove(scale_action)
     prop_anim.node_animation.from_action(nodes_action)
+
+    ############################################
+    # CONSTRUCT CAMERA ANIMATION PROPERTY DATA #
+    ############################################
+    
 
     # Flags
     prop_anim.flag_0 = gfs_anim.flag_0

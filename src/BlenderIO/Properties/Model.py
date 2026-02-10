@@ -131,6 +131,11 @@ ModelBoundingSphereProps = define_bounding_sphere(ModelBoundingSphere)
 GFSToolsModelNodeProperties = make_node_props_class("GFSToolsModelNodeProperties")
 
 
+class UnusedTexture(bpy.types.PropertyGroup):
+    name:     bpy.props.StringProperty(name="Name")
+    texture:  bpy.props.PointerProperty(type=bpy.types.Image)
+    external: bpy.props.BoolProperty(name="Is External")
+
 class GFSToolsModelProperties(GFSVersionedProperty, bpy.types.PropertyGroup):
     bounding_box:    bpy.props.PointerProperty(type=ModelBoundingBoxProps)
     bounding_sphere: bpy.props.PointerProperty(type=ModelBoundingSphereProps)
@@ -139,13 +144,16 @@ class GFSToolsModelProperties(GFSVersionedProperty, bpy.types.PropertyGroup):
     flag_3:           bpy.props.BoolProperty(name="Unknown Flag 3", default=False) 
     root_node_name:   bpy.props.StringProperty(name="Root Node Name", default="RootNode")
     has_external_emt: bpy.props.BoolProperty(name="External EMT", default=False)    
+    has_external_tex: bpy.props.BoolProperty(name="External Textures", default=False)
     physics:          bpy.props.PointerProperty(name="Physics", type=GFSToolsPhysicsProperties)
     physics_blob:     bpy.props.StringProperty(name="SECRET PHYSICS BLOB - DO NOT TOUCH", default='', options={'HIDDEN'})
-
+    
     active_animation_pack_idx:   bpy.props.IntProperty(default=-1, options={'HIDDEN'})
     internal_animation_pack_idx: bpy.props.IntProperty(default=-1, options={'HIDDEN'})
     animation_pack_idx:          bpy.props.IntProperty(default= 0, options={'HIDDEN'})
     animation_packs:             bpy.props.CollectionProperty(type=GFSToolsAnimationPackProperties)
+    unused_textures:             bpy.props.CollectionProperty(type=UnusedTexture)
+    unused_textures_idx:         bpy.props.IntProperty(default=0)
     
     ERROR_TEMPLATE = "CRITICAL INTERNAL ERROR: INVALID {msg} ANIMATION PACK INDEX '{idx}'"
     

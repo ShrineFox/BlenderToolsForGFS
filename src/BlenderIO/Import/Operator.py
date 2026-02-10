@@ -1,13 +1,16 @@
 import os
 
 import bpy
+from mathutils import Matrix, Quaternion
 from bpy_extras.io_utils import ImportHelper
 
 from ...FileFormats.GFS import GFSInterface, UnsupportedVersionError, NotAGFSFileError
+from ...FileFormats.TexBin import TexBinBinary
 from ...FileFormats.GFS.Interface import EPLFileInterface
 from ..Data import bone_pose_enum_options
 from ..Data import anim_boundbox_policy_options
 from ..Preferences import get_preferences
+from ..Utils.Object import lock_obj_transforms
 from ..modelUtilsTest.API.Operator import get_op_idname
 from ..Globals import ErrorLogger
 from .ImportGFS import import_gfs_object
@@ -120,14 +123,57 @@ class ImportGFS(bpy.types.Operator, ImportHelper):
     def draw(self, context):
         pass
 
-    @ErrorLogger.display_exceptions("The file you are trying to import.")
-    def import_file(self, context, filepath):
-        if bpy.context.view_layer.objects.active is not None:        
-            bpy.ops.object.mode_set(mode="OBJECT")
-        bpy.ops.object.select_all(action='DESELECT')
+    def load_external_textures(self, filepath):
+        filename = os.path.splitext(os.path.split(filepath)[1])[0]
+    
+        class TexHolder:
+            def __init__(self):
+                self.textures = []
+            
+        external_textures = TexHolder()
         
-        # Try to load file and log any errors...
-        errorlog = ErrorLogger()
+        # TODO: LOADING TEXTURES CAUSES HUGE RAM SPIKE???
+        # One thing to note: it's better to simply keep a list of which textures
+        # exist in the bin rather than loading the entire thing up immediately...?
+        # return external_textures
+        file_dir = os.path.split(filepath)[0]
+        for dname in os.listdir(file_dir):
+            if dname.upper() == "TEXTURES" and os.path.isdir(os.path.join(file_dir, dname)):
+                bits = filename.split("_")
+                p1 = int(bits[0][-3:])
+                p2 = int(bits[1])
+                p3 = int(bits[2])
+                
+                
+                tex_fn = f"TEX{p1:0>3}_{p2:0>3}_{p3:0>2}_{{0:0>2}}.BIN"
+                
+                if os.path.exists(os.path.join(file_dir, dname, tex_fn.format("00"))):
+                    tex_fp = os.path.join(file_dir, dname, tex_fn.format("00"))
+                    tex_ft = os.path.join(os.path.split(filepath)[0], dname, tex_fn)
+                elif os.path.exists(os.path.join(file_dir, dname, tex_fn.lower().format("00"))):
+                    tex_fp = os.path.join(file_dir, dname, tex_fn.lower().format("00"))
+                    tex_ft = os.path.join(os.path.split(filepath)[0], dname, tex_fn.lower())
+                else:
+                    continue
+            
+                class TexWrapper:
+                    def __init__(self, name, data):
+                        self.name = name
+                        self.image_data = data
+                        
+                        self.unknown_1 = 0
+                        self.unknown_2 = 0
+                        self.unknown_3 = 0
+                        self.unknown_4 = 0
+                
+                tb = TexBinBinary()
+                tb.read(tex_fp, tex_ft)
+                for tex in tb.textures:
+                    external_textures.textures.append(TexWrapper(tex.name.rstrip(b'\x00').decode('sjis'), tex.payload))
+                break
+        return external_textures
+
+    def safe_gfs_load(self, filepath, share_textures, external_textures, errorlog):
         warnings = []
         try:
             with open(filepath, 'rb') as F:
@@ -145,11 +191,55 @@ class ImportGFS(bpy.types.Operator, ImportHelper):
         # Report any file-loading errors
         if len(errorlog.errors):
             errorlog.digest_errors(self.debug_mode)
-            return {'CANCELLED'}
+            return None
 
         # Now import file data to Blender
         filename = os.path.splitext(os.path.split(filepath)[1])[0]
-        import_gfs_object(gfs, raw_gfs, filename, errorlog, self.policies)
+        armature = import_gfs_object(gfs, raw_gfs, share_textures, external_textures, filename, errorlog, self.policies)
+        
+        return gfs, armature
+
+    @ErrorLogger.display_exceptions("The file you are trying to import.")
+    def import_file(self, context, filepath):
+        if bpy.context.view_layer.objects.active is not None:        
+            bpy.ops.object.mode_set(mode="OBJECT")
+        bpy.ops.object.select_all(action='DESELECT')
+        
+        # Try to load file and log any errors...
+        errorlog = ErrorLogger()
+
+        external_textures = self.load_external_textures(filepath)
+        gfs, armature = self.safe_gfs_load(filepath, False, external_textures, errorlog)
+        if gfs is None:
+            return {'CANCELLED'}
+        
+        for bone in armature.data.bones:
+            subobjs = []
+            cur_obj = None
+            for prop in bone.GFSTOOLS_NodeProperties.properties:
+                if prop.dname == "fldLayoutOfModel_major" and prop.dtype == "INT32":
+                    cur_obj = prop.int32_data
+                elif prop.dname == "fldLayoutOfModel_minor" and prop.dtype == "INT32" and cur_obj is not None:
+                    subobjs.append((cur_obj, prop.int32_data))
+                    cur_obj = None
+            
+            for major, minor in subobjs:
+                sub_fn = f"M{major:0>3}_{minor:0>3}.GMD"
+                new_fp = os.path.join(os.path.split(filepath)[0], "OBJECT", sub_fn)
+                if os.path.exists(new_fp):
+                    subgfs, subarmature = self.safe_gfs_load(new_fp, True, external_textures, errorlog)
+                    
+                    lock_obj_transforms(subarmature)
+                    constraint = subarmature.constraints.new("CHILD_OF")
+                    constraint.target    = armature
+                    constraint.subtarget = bone.name
+                    constraint.inverse_matrix = Matrix.Identity(4)
+                    
+                    transform = Quaternion([.5**.5, 0., 0., .5**.5]).to_matrix().to_4x4()
+                    subarmature.matrix_local = transform
+                else:
+                    errorlog.log_warning_message(f"Sub-object {sub_fn} was not found at {new_fp}")
+            
         
         set_fps(self, context)
         set_clip(self, context)
@@ -162,6 +252,7 @@ class ImportGFS(bpy.types.Operator, ImportHelper):
             self.report({"INFO"}, "Import successful.")
             
         return {'FINISHED'}
+
     
     def execute(self, context):
         return self.import_file(context, self.filepath)

@@ -127,6 +127,7 @@ class MaterialBinary(Serializable):
                f"{self.disable_backface_culling} {self.unknown_0x6A} {len(self.attributes)}"
 
     def read_write(self, rw, version):
+        # print("STARTING READ")
         self.name         = rw.rw_obj(self.name, version)
         self.flags        = rw.rw_obj(self.flags)
         
@@ -174,6 +175,15 @@ class MaterialBinary(Serializable):
         if version >= 0x01100000:
             self.unknown_0x6A = rw.rw_int32(self.unknown_0x6A)
 
+        # print(self.name.string, hex(self.flags._value))
+        # print(self.diffuse, self.ambient, self.specular, self.emissive)
+        # print(self.reflectivity, self.outline_idx)
+        # print(self.draw_method, self.unknown_0x51, self.unknown_0x52, self.unknown_0x53, self.unknown_0x54, self.unknown_0x55, self.unknown_0x56)
+        # print(self.unknown_0x56, self.unknown_0x58)
+        # print(self.unknown_0x5A, self.unknown_0x5C, self.unknown_0x5E)
+        # print(hex(self.texture_indices_1._value), hex(self.texture_indices_2._value))
+        # print(self.disable_backface_culling, self.unknown_0x6A)
+
         # Handle textures
         if self.flags.has_diffuse_texture:    self.diffuse_texture    = rw.rw_new_obj(self.diffuse_texture,    TextureSamplerBinary, version)
         if self.flags.has_normal_texture:     self.normal_texture     = rw.rw_new_obj(self.normal_texture,     TextureSamplerBinary, version)
@@ -187,6 +197,7 @@ class MaterialBinary(Serializable):
             
         # Attributes
         if self.flags.has_attributes:
+            # print("READING ATTRIBUTES!!!")
             rw.rw_obj(self.attributes, version)
 
 
@@ -240,6 +251,8 @@ class MaterialAttributeBinary(Serializable):
             dtype = Property6
         elif self.ID == 7:
             dtype = Property7
+        elif self.ID == 8:
+            dtype = Property8
         else:
             raise NotImplementedError(f"Unrecognised Attribute ID: {self.ID}")
             
@@ -669,3 +682,15 @@ class Property7(Serializable):
         
     def read_write(self, rw, version):
         pass
+
+
+class Property8(Serializable):
+    def __init__(self, endianness='>'):
+        super().__init__()
+        self.context.endianness = endianness
+        self.unknown_0x00 = None
+        self.unknown_0x04 = None
+
+    def read_write(self, rw, version):
+        self.unknown_0x00 = rw.rw_float32(self.unknown_0x00)
+        self.unknown_0x04 = rw.rw_float32(self.unknown_0x04)

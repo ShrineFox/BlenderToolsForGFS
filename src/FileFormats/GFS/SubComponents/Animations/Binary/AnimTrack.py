@@ -58,8 +58,8 @@ class AnimationTrackBinary(Serializable):
         elif self.keyframe_type == 20: kf_type = Tex1UV # Material Anim: 0x01105100
         elif self.keyframe_type == 21: kf_type = Tex0UVSnap # Material Anim: 0x01105020, 0x1105030, 0x01105040, 0x01105060, 0x01105070, 0x1105090, 0x01105100
         elif self.keyframe_type == 22: kf_type = KeyframeType22 # Related to EPLs?
-        elif self.keyframe_type == 23: kf_type = KeyframeType23 # Camera Anim: 0x01105040, 0x01105060, 0x01105070, 0x01105100
-        elif self.keyframe_type == 24: kf_type = KeyframeType24 # Camera Anim: 0x01105060, 0x01105070
+        elif self.keyframe_type == 23: kf_type = CameraFOV # Camera Anim: 0x01105040, 0x01105060, 0x01105070, 0x01105100
+        elif self.keyframe_type == 24: kf_type = CameraRoll # Camera Anim: 0x01105060, 0x01105070
         elif self.keyframe_type == 25: kf_type = OpacitySnap    # Material Anim: 0x01105070, 0x1105090, 0x01105100
         elif self.keyframe_type == 26: kf_type = KeyframeType26
         elif self.keyframe_type == 27: kf_type = NodeTRSHalf    # Node Anim: 0x01104970, 0x01105000, 0x01105010, 0x01105020, 0x01105030, 0x01105040, 0x01105070, 0x01105080, 0x1105090, 0x01105100
@@ -473,7 +473,7 @@ class KeyframeType22(Serializable):
         self.unknown_0x24 = rw.rw_float32(self.unknown_0x24)
         self.unknown_0x28 = rw.rw_uint8(self.unknown_0x28)
 
-class KeyframeType23(Serializable):
+class CameraFOV(Serializable):
     """Camera Keyframe"""
     OBJ_VARIANT_TYPE = 3
     VARIANT_TYPE = 23
@@ -490,22 +490,22 @@ class KeyframeType23(Serializable):
     def read_write(self, rw):
         self.camera_fov = rw.rw_float32(self.camera_fov)
 
-class KeyframeType24(Serializable):
+class CameraRoll(Serializable):
     """Camera Keyframe"""
     OBJ_VARIANT_TYPE = 3
     VARIANT_TYPE = 24
     
-    def __init__(self, unknown_float=None, endianness='>'):
+    def __init__(self, roll=None, endianness='>'):
         super().__init__()
         self.context.endianness = endianness
         
-        self.unknown_float = unknown_float
+        self.roll = roll
         
     def __repr__(self):
         return f"[GFDBinary::Animation::Controller::Track::KeyframeType24] {self.unknown_float}"
     
     def read_write(self, rw):
-        self.unknown_float = rw.rw_float32(self.unknown_float)
+        self.roll = rw.rw_float32(self.roll)
         
 class OpacitySnap(Serializable):
     OBJ_VARIANT_TYPE = 2

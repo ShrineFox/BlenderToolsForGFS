@@ -35,7 +35,7 @@ class OBJECT_UL_GFSToolsPhysBoneUIList(bpy.types.UIList):
         r = split.row()
         r.prop(item, "has_name", text="")
         c = r.column()
-        c.prop(item, "name")
+        c.prop(item, "name", text=str(index))  # ← show bone index instead of "Name:"
         c.enabled = item.has_name
         
         c = split.column()

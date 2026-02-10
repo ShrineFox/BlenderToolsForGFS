@@ -14,17 +14,22 @@ class ObjectName(Serializable):
         self.string      = None
         self.string_hash = None
     
+    
     @classmethod
-    def from_name(cls, name, encoding="utf8"):
+    def from_bytestring(cls, name_bytestring):
         instance = cls()
         
-        instance.string = name
-        
-        name_bytestring = instance.string_encode(encoding)
+        instance.string = name_bytestring
         instance.string_size = len(name_bytestring)
         instance.string_hash = gfs_string_hash(name_bytestring)
         
         return instance
+    
+    @classmethod
+    def from_name(cls, name, encoding="utf8"):
+        instance = cls()
+        
+        return cls.from_bytestring(instance.string.encode(encoding))
     
     def __repr__(self):
         return f"[GFS::ObjName] {safe_format(self.string_hash, hex32_format)} {self.string}"
@@ -59,21 +64,23 @@ class ObjectName(Serializable):
     def _read_string(self, rw, string, encoding):
         tmp = rw.rw_bytestring(string, self.string_size)
         try:
-            out = tmp.decode(encoding, errors='ignore')
-        except UnicodeDecodeError as e:
-            if tmp[-28:] == b'DirectX \xe3\x83\x9e\xe3\x83\x8d\xe3\x83\xbc\xe3\x82\xb8\xe3\x83\xa3.\x97L\x8c\xf8':
-                out = tmp[:-4].decode("utf-8", errors='ignore') + tmp[-4:].decode("shift-jis", errors='ignore')
-            else:
-                raise Exception(f"Unable to decode '{tmp}' with encoding '{encoding}': {e}")
+            out = tmp.decode(encoding)
+        except UnicodeDecodeError:
+            out = tmp
+            #if tmp[-28:] == b'DirectX \xe3\x83\x9e\xe3\x83\x8d\xe3\x83\xbc\xe3\x82\xb8\xe3\x83\xa3.\x97L\x8c\xf8':
+            #    out = tmp[:-4].decode("utf-8") + tmp[-4:].decode("shift-jis")
+            #else:
+            #    raise Exception(f"Unable to decode '{tmp}' with encoding '{encoding}': {e}")
         return out
     
-    def string_encode(self, encoding):
-        if self.string[-16:] == "DirectX マネージャ.有効":
-            out = self.string[:-2].encode("utf-8", errors='ignore') + self.string[-2:].encode('shift-jis', errors='ignore')
-        else:
-            out = self.string.encode(encoding, errors='ignore')
-        return out
+    # def string_encode(self, encoding):
+    #     if self.string[-16:] == "DirectX マネージャ.有効":
+    #         out = self.string[:-2].encode("utf-8") + self.string[-2:].encode('shift-jis')
+    #     else:
+    #         out = self.string.encode(encoding)
+    #     return out
     
     def _write_string(self, rw, string, encoding):
-        rw.rw_bytestring(self.string_encode(encoding), self.string_size)        
+        #rw.rw_bytestring(self.string_encode(encoding), self.string_size)     
+        rw.rw_bytestring(self.string.encode(encoding), self.string_size)
         return string

@@ -28,6 +28,13 @@ class AutonameMeshUVs(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class OBJECT_UL_GFSToolsUnusedTextureUIList(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index, flt_flag):
+        layout.prop(item, "name", text="", emboss=False)
+        layout.prop(item, "texture", text="")
+        layout.prop(item, "is_external")
+
+
 class OBJECT_PT_GFSToolsModelDataPanel(bpy.types.Panel):
     bl_label = "GFS Model"
     bl_idname = "OBJECT_PT_GFSToolsModelDataPanel"
@@ -55,6 +62,10 @@ class OBJECT_PT_GFSToolsModelDataPanel(bpy.types.Panel):
 
         aprops.bounding_box.draw(ctr)
         aprops.bounding_sphere.draw(ctr)
+        
+        
+        ctr.prop(aprops, "has_external_tex")
+        ctr.template_list(OBJECT_UL_GFSToolsUnusedTextureUIList.__name__, "", aprops, "unused_textures", aprops, "unused_textures_idx")
 
     @classmethod
     def register(cls):
@@ -62,6 +73,7 @@ class OBJECT_PT_GFSToolsModelDataPanel(bpy.types.Panel):
         bpy.utils.register_class(cls.NodePropertiesPanel)
         bpy.utils.register_class(OBJECT_PT_GFSToolsPhysicsDataPanel)
         bpy.utils.register_class(OBJECT_PT_GFSToolsAnimationDataPanel)
+        bpy.utils.register_class(OBJECT_UL_GFSToolsUnusedTextureUIList)
 
     @classmethod
     def unregister(cls):
@@ -69,6 +81,7 @@ class OBJECT_PT_GFSToolsModelDataPanel(bpy.types.Panel):
         bpy.utils.unregister_class(cls.NodePropertiesPanel)
         bpy.utils.unregister_class(OBJECT_PT_GFSToolsPhysicsDataPanel)
         bpy.utils.unregister_class(OBJECT_PT_GFSToolsAnimationDataPanel)
+        bpy.utils.unregister_class(OBJECT_UL_GFSToolsUnusedTextureUIList)
 
     NodePropertiesPanel = makeNodePropertiesPanel(
         "ArmatureNode",

@@ -177,10 +177,11 @@ class ExportGFS(bpy.types.Operator, ExportHelper):
         # probably not good.
         # Any exceptions that interrupt model export in this block should be
         # reported as bugs, and this should be communicated to the user.
+        has_external_textures = selected_model.data.GFSTOOLS_ModelProperties.has_external_tex
         gfs = GFSInterface()
         bpy_to_gfs_nodes, full_rest_pose_matrices = export_node_tree(gfs, selected_model, errorlog)
         bpy_material_names = export_mesh_data(gfs, selected_model, bpy_to_gfs_nodes, full_rest_pose_matrices, errorlog, self.policies)
-        export_materials_and_textures(gfs, bpy_material_names, errorlog)
+        export_materials_and_textures(gfs, bpy_material_names, has_external_textures, errorlog)
         export_lights(gfs, selected_model)
         export_cameras(gfs, selected_model, errorlog)
         export_physics(gfs, selected_model, errorlog)

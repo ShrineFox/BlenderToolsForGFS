@@ -333,8 +333,10 @@ def import_model(gfs, name, materials, errorlog, is_vertex_merge_allowed, bone_p
     set_material_vertex_attributes(materials, material_vertex_attributes, errorlog)
         
     # Import cameras
+    cameras = []
     for i, cam in enumerate(gfs.cameras):
-        import_camera("camera", i, cam, main_armature, bpy_node_names)
+        camera_name = f"camera_{i}"
+        import_camera(camera_name, cam, main_armature, bpy_node_names)
     
     # Import lights
     for i, light in enumerate(gfs.lights):
@@ -685,8 +687,8 @@ def set_material(bpy_mesh_object, gfs_mesh, materials, material_vertex_attribute
                     errorlog.log_warning_message(f"Mesh '{bpy_mesh_object.name}' has tangents but no UV layers - tangents cannot be imported to Blender.")
 
 
-def import_camera(name, i, camera, armature, bpy_node_names):
-    bpy_camera = bpy.data.cameras.new(f"{name}_{i}")
+def import_camera(name, camera, armature, bpy_node_names):
+    bpy_camera = bpy.data.cameras.new(name)
     
     # Import attributes
     bpy_camera.type       = "PERSP"
@@ -720,6 +722,7 @@ def import_camera(name, i, camera, armature, bpy_node_names):
                                              camera.binary.view_matrix[ 4: 8],
                                              camera.binary.view_matrix[ 8:12],
                                              camera.binary.view_matrix[12:16]]) @ parent_transform
+    return bpy_camera_object
 
 
 def import_light(name, i, light, armature, bpy_node_names):

@@ -17,8 +17,8 @@ from .Binary.AnimTrack import EmissiveRGB
 from .Binary.AnimTrack import KeyframeType15
 from .Binary.AnimTrack import Tex1UV
 from .Binary.AnimTrack import Tex0UVSnap
-from .Binary.AnimTrack import KeyframeType23
-from .Binary.AnimTrack import KeyframeType24
+from .Binary.AnimTrack import CameraFOV
+from .Binary.AnimTrack import CameraRoll
 from .Binary.AnimTrack import OpacitySnap
 from .Binary.AnimTrack import KeyframeType29
 from .Binary.AnimTrack import KeyframeType30
@@ -213,7 +213,7 @@ class AnimationInterface:
             if track_binary.keyframe_type == 23:
                 anim.fov = {f: kf.camera_fov for f, kf in zip(track_binary.frames, track_binary.values)}
             elif track_binary.keyframe_type == 24:
-                anim.unknown_24 = {f: kf.unknown_float for f, kf in zip(track_binary.frames, track_binary.values)}
+                anim.roll = {f: kf.roll for f, kf in zip(track_binary.frames, track_binary.values)}
             else:
                 raise NotImplementedError(f"No instruction to convert keyframe type '{track_binary.keyframe_type}' to a Camera Animation exists")
 
@@ -434,14 +434,14 @@ class CameraAnimation:
     def __init__(self, id, name):
         self.name = name
         self.id   = id
-        self.fov        = {}
-        self.unknown_24 = {}
+        self.fov  = {}
+        self.roll = {}
 
     def to_controller(self):
         tracks = []
         for dataset, keyframe_type in [
-                (self.fov,         KeyframeType23),
-                (self.unknown_24,  KeyframeType24)
+                (self.fov,   CameraFOV),
+                (self.roll,  CameraRoll)
             ]:
             if len(dataset):
                 kf_type = keyframe_type

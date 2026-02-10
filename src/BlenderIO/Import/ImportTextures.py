@@ -4,11 +4,15 @@ import os
 import bpy
 
 
-def import_textures(gfs):
+def import_textures(gfs, share_textures):
     textures = {}
     for tex in gfs.textures:
         # safety check... split off any paths from name
         name = tex.name.split("/")[-1].split("\\")[-1]
+        if share_textures and name in bpy.data.images:
+            textures[name] = bpy.data.images[name]
+            continue
+        
         filepath = os.path.join(bpy.app.tempdir, name)
         # Try/finally seems to prevent a race condition between Blender and 
         # Python forming

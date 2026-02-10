@@ -6,7 +6,7 @@ from ..Data import dummy_image_data
 from ..Utils.UVMapManagement import is_valid_uv_map, get_uv_idx_from_name
 
 
-def export_materials_and_textures(gfs, bpy_material_names, errorlog):
+def export_materials_and_textures(gfs, bpy_material_names, has_external_textures, errorlog):
     texture_names = set()
     for bpy_material_name in bpy_material_names:
         bpy_material = bpy.data.materials[bpy_material_name]
@@ -484,36 +484,39 @@ def export_materials_and_textures(gfs, bpy_material_names, errorlog):
         texture_names.remove(None)
     texture_names = sorted(texture_names)
     for (texture_name, mat_name, node_name) in texture_names:
-        export_texture(gfs, texture_name, mat_name, node_name, errorlog)
+        export_texture(gfs, texture_name, mat_name, node_name, has_external_textures, errorlog)
 
 
-def export_texture(gfs, texture_name, mat_name, node_name, errorlog):
+def export_texture(gfs, texture_name, mat_name, node_name, has_external_textures, errorlog):
     # Retreive image data block from Blender
-    if texture_name == "dummy" and texture_name not in bpy.data.images:
+    if (texture_name == "dummy" and texture_name not in bpy.data.images):
         gfs.add_texture("dummy", dummy_image_data, 1, 1, 0, 0)
         return
     else:
         bpy_image = bpy.data.images[texture_name]
     
-    # Check that the image is a file; if it is then we can just
-    # embed it in the model
-    # If it isn't... need to convert it to DDS, which we won't support currently
-    if bpy_image.type != "FILE" and bpy_image.type != "IMAGE":
-        errorlog.log_error_message(f"Cannot currently export non-file and non-packed textures: {bpy_image.name} {bpy_image.type} used by material '{mat_name}' on texture node '{node_name}'")
-    
-    # Check if the file is packed in the blend or external;
-    # get data depending on which is the case
-    image_data = None
-    if bpy_image.packed_file is None:
-        img_path = os.path.abspath(bpy_image.filepath_raw)
-        if len(bpy_image.filepath_raw) and os.path.isfile(img_path):
-            with open(bpy_image.filepath_raw, 'rb') as F:
-                image_data = F.read()
-        else:
-            errorlog.log_warning_message(f"Attempted to export external image file '{bpy_image.name}' used by material '{mat_name}' on texture node '{node_name}', but it could not be located at the path: '{img_path}'. You may be able to export if you pack all images into Blender instead of referring to external files. It will be replaced with a dummy texture.")
-            image_data = dummy_image_data
+    if has_external_textures:
+        image_data = dummy_image_data
     else:
-        image_data = bpy_image.packed_file.data
+        # Check that the image is a file; if it is then we can just
+        # embed it in the model
+        # If it isn't... need to convert it to DDS, which we won't support currently
+        if bpy_image.type != "FILE" and bpy_image.type != "IMAGE":
+            errorlog.log_error_message(f"Cannot currently export non-file and non-packed textures: {bpy_image.name} {bpy_image.type} used by material '{mat_name}' on texture node '{node_name}'")
+        
+        # Check if the file is packed in the blend or external;
+        # get data depending on which is the case
+        image_data = None
+        if bpy_image.packed_file is None:
+            img_path = os.path.abspath(bpy_image.filepath_raw)
+            if len(bpy_image.filepath_raw) and os.path.isfile(img_path):
+                with open(bpy_image.filepath_raw, 'rb') as F:
+                    image_data = F.read()
+            else:
+                errorlog.log_warning_message(f"Attempted to export external image file '{bpy_image.name}' used by material '{mat_name}' on texture node '{node_name}', but it could not be located at the path: '{img_path}'. You may be able to export if you pack all images into Blender instead of referring to external files. It will be replaced with a dummy texture.")
+                image_data = dummy_image_data
+        else:
+            image_data = bpy_image.packed_file.data
         
     # Check that it's a DDS
     # Not sure what to do with non-DDS data currently
